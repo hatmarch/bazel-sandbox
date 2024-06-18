@@ -17,7 +17,7 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_python/releases/download/{}/rules_python-{}.tar.gz".format(VERSION,VERSION),
 )
 
-load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_multi_toolchains")
+load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_toolchains")
 
 py_repositories()
 
@@ -25,37 +25,44 @@ load("@rules_python//python/pip_install:repositories.bzl", "pip_install_dependen
 
 pip_install_dependencies()
 
-default_python_version = "3.9"
-
-python_register_multi_toolchains(
-    name = "python",
-    default_version = default_python_version,
-    python_versions = [
-        "3.8",
-        "3.9",
-        "3.10",
-        "3.11",
-    ],
+python_register_toolchains(
+    name = "python_3_11",
+    python_version = "3.11",
+    set_python_version_constraint = True,
     register_coverage_tool = True,
 )
 
-load("@python//:pip.bzl", "multi_pip_parse")
+load("@rules_python//python:pip.bzl", "pip_parse")
 
-multi_pip_parse(
+pip_parse(
+    # (Optional) You can set an environment in the pip process to control its
+    # behavior. Note that pip is run in "isolated" mode so no PIP_<VAR>_<NAME>
+    # style env vars are read, but env vars that control requests and urllib3
+    # can be passed
+    # environment = {"HTTPS_PROXY": "http://my.proxy.fun/"},
     name = "pypi",
-    default_version = default_python_version,
-    python_interpreter_target = {
-        "3.10": "@python_3_10_host//:python",
-        "3.11": "@python_3_11_host//:python",
-        "3.8": "@python_3_8_host//:python",
-        "3.9": "@python_3_9_host//:python",
-    },
-    requirements_lock = {
-        "3.10": "//requirements:requirements_lock_3_10.txt",
-        "3.11": "//requirements:requirements_lock_3_11.txt",
-        "3.8": "//requirements:requirements_lock_3_8.txt",
-        "3.9": "//requirements:requirements_lock_3_9.txt",
-    },
+
+    # (Optional) You can provide extra parameters to pip.
+    # Here, make pip output verbose (this is usable with `quiet = False`).
+    # extra_pip_args = ["-v"],
+
+    # (Optional) You can exclude custom elements in the data section of the generated BUILD files for pip packages.
+    # Exclude directories with spaces in their names in this example (avoids build errors if there are such directories).
+    #pip_data_exclude = ["**/* */**"],
+
+    # (Optional) You can provide a python_interpreter (path) or a python_interpreter_target (a Bazel target, that
+    # acts as an executable). The latter can be anything that could be used as Python interpreter. E.g.:
+    # 1. Python interpreter that you compile in the build file (as above in @python_interpreter).
+    # 2. Pre-compiled python interpreter included with http_archive
+    # 3. Wrapper script, like in the autodetecting python toolchain.
+    #
+    # Here, we use the interpreter constant that resolves to the host interpreter from the default Python toolchain.
+    python_interpreter_target = "@python_3_11_host//:python",
+
+    # (Optional) You can set quiet to False if you want to see pip output.
+    #quiet = False,
+    requirements_lock = "//requirements:requirements_lock_3_11.txt",
+    # requirements_windows = "//:requirements_windows.txt",
 )
 
 load("@pypi//:requirements.bzl", "install_deps")
